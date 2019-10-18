@@ -1,0 +1,59 @@
+﻿@page "/"
+@using WebAPI.Data
+@inject OrderService Service;
+
+<EjsButton OnClick="Add">Add Record</EjsButton>
+<EjsButton OnClick="Update">Update Record</EjsButton>
+<EjsButton OnClick="Delete">Delete Record</EjsButton>
+<EjsGrid TValue="Orders" @ref="DefaultGrid" DataSource="@Data" ModelType="@Model" AllowPaging="true">
+    <GridEvents RowSelected="RowSelectHandler" RowDeselected="RowDeselectHandler" TValue="Orders"></GridEvents>
+    <GridEditSettings AllowAdding="true" AllowDeleting="true" AllowEditing="true"></GridEditSettings>
+    <GridColumns>
+        <GridColumn Field=@nameof(Orders.OrderID) HeaderText="Order ID" IsPrimaryKey="true" Width="120"></GridColumn>
+        <GridColumn Field=@nameof(Orders.CustomerID) HeaderText="Customer Name" Width="150"></GridColumn>
+        <GridColumn Field=@nameof(Orders.OrderDate) HeaderText=" Order Date" Width="130"></GridColumn>
+        <GridColumn Field=@nameof(Orders.Freight) HeaderText="Freight" Format="C2" Width="120"></GridColumn>
+    </GridColumns>
+</EjsGrid>
+
+@code{
+        EjsGrid<Orders> DefaultGrid;
+    public long? SelectedID;
+    public List<Orders> Data = new List<Orders>();
+    public Orders Model = new Orders();
+    public void RowSelectHandler(RowSelectEventArgs<Orders> Args) { SelectedID = Args.Data.OrderID; }
+    public void RowDeselectHandler(RowDeselectEventArgs<Orders> Args) { SelectedID = null; }
+    protected override async Task OnInitializedAsync()
+    {
+        Data = await Service.GetOrdersAsync();
+    }
+    public async void Add()
+    {
+        Orders ord = new Orders() { OrderID = Data.Max(X => X.OrderID) + 1, EmployeeID = 100, CustomerID = "New", OrderDate = DateTime.Now, Freight = 99.9 };
+        await Service.InsertOrderAsync(ord);
+        UpdateData();
+    }
+    public async void UpdateData()
+    {
+        Data = await Service.GetOrdersAsync();
+        StateHasChanged();
+    }
+    public async void Delete()
+    {
+        if (SelectedID != null)
+        {
+            await Service.DeleteOrderAsync(SelectedID.ToString());
+            UpdateData();
+        }
+    }
+    public async void Update()
+    {
+        if (SelectedID != null)
+        {
+            Orders val = Data.Find(X => X.OrderID == SelectedID);
+            val.CustomerID = "Changed";
+            await Service.UpdateOrderAsync(SelectedID.ToString(), val);
+            UpdateData();
+        }
+    }
+}
