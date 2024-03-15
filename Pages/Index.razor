@@ -1,0 +1,67 @@
+﻿@page "/"
+@using CrudAsynchronousSample.Data
+@inject OrderService Service;
+
+<SfButton OnClick="Add">Add Record</SfButton>
+<SfButton OnClick="Update">Update Record</SfButton>
+<SfButton OnClick="Delete">Delete Record</SfButton>
+<SfGrid TValue="Orders" @ref="DefaultGrid" DataSource="@Data" AllowPaging="true">
+    <GridEvents RowSelected="RowSelectHandler" RowDeselected="RowDeselectHandler" TValue="Orders"></GridEvents>
+    <GridEditSettings AllowAdding="true" AllowDeleting="true" AllowEditing="true"></GridEditSettings>
+    <GridColumns>
+        <GridColumn Field=@nameof(Orders.OrderID) HeaderText="Order ID" IsPrimaryKey="true" Width="120"></GridColumn>
+        <GridColumn Field=@nameof(Orders.CustomerID) HeaderText="Customer Name" Width="150"></GridColumn>
+        <GridColumn Field=@nameof(Orders.OrderDate) HeaderText=" Order Date" Width="130"></GridColumn>
+        <GridColumn Field=@nameof(Orders.Freight) HeaderText="Freight" Format="C2" Width="120"></GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code{
+    SfGrid<Orders> DefaultGrid;
+    public long? SelectedID;
+    public List<Orders> Data = new List<Orders>();
+    public Orders Model = new Orders();
+    public void RowSelectHandler(RowSelectEventArgs<Orders> Args) { SelectedID = Args.Data.OrderID; }
+    public void RowDeselectHandler(RowDeselectEventArgs<Orders> Args) { SelectedID = null; }
+    protected override async Task OnInitializedAsync()
+    {
+        Data = await Service.GetOrdersAsync();
+    }
+    public async Task Add()
+    {
+        Orders newOrder = new Orders()
+            {
+                OrderID = Data.Count > 0 ? Data.Max(x => x.OrderID) + 1 : 1,
+                CustomerID = "New",
+                OrderDate = DateTime.Now,
+                Freight = 99.9,
+                ShipCity = "India",
+                EmployeeID = 100,
+            };
+        await Service.InsertOrderAsync(newOrder);
+        await UpdateData();
+    }
+    public async Task UpdateData()
+    {
+        Data = await Service.GetOrdersAsync();
+        await DefaultGrid.Refresh();
+    }
+    public async void Delete()
+    {
+        if (SelectedID != null)
+        {
+            await Service.DeleteOrderAsync(SelectedID.ToString());
+            UpdateData();
+        }
+    }
+    public async void Update()
+    {
+        if (SelectedID != null)
+        {
+            Orders val = Data.Find(X => X.OrderID == SelectedID);
+            val.CustomerID = "Changed";
+            await Service.UpdateOrderAsync(SelectedID.ToString(), val);
+            UpdateData();
+        }
+    }
+}
